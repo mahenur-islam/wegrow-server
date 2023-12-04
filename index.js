@@ -39,7 +39,7 @@ async function run() {
     // users related api
     app.get("/users", async (req, res) => {
       const users = await userCollection.find().toArray();
-      const teamMemberCount = users.length; // Get the count of team members
+      const teamMemberCount = users.length;
       res.json({ users, teamMemberCount });
     });
 
@@ -48,7 +48,7 @@ async function run() {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await userCollection.deleteOne(query);
-      res.send(result); // Corrected from req.send to res.send
+      res.send(result);
     });
 
 
@@ -78,7 +78,7 @@ async function run() {
 
 
 
-    
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
