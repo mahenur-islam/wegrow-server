@@ -146,7 +146,29 @@ async function run() {
       const result = await customRequestCollection.insertOne(newCustomRequest);
       res.send(result);
     })
+    app.get("/custom-request", async (req, res) => {
+      const products = await customRequestCollection.find().toArray();
+      res.json(products);
+    });
 
+     //delete a custom request 
+     app.delete("/custom-request/:id", async (req, res) => {
+      const customRequestId = req.params.id;
+
+      try {
+        const query = { _id: new ObjectId(customRequestId) };
+        const result = await customRequestCollection.deleteOne(query);
+
+        if (result.deletedCount === 1) {
+          res.json({ message: "Request deleted successfully" });
+        } else {
+          res.status(404).json({ message: "Request not found" });
+        }
+      } catch (error) {
+        console.error("Error deleting Request:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+      }
+    });
 
 
     await client.db("admin").command({ ping: 1 });
