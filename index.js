@@ -6,11 +6,10 @@ const app = express();
 
 const port = process.env.PORT || 5000;
 
-//middleware
-
+// Middleware
 app.use(
   cors({
-    origin: "http://localhost:5173", // Replace with your frontend URL
+    origin: "http://localhost:5173", // Replace with frontend URL
     credentials: true,
   })
 );
@@ -18,7 +17,6 @@ app.use(express.json());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.neajhbt.mongodb.net/?retryWrites=true&w=majority`;
 
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -29,21 +27,19 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
-    //all collection
     const userCollection = client.db("wegrow").collection("users");
     const productCollection = client.db("wegrow").collection("products");
+    const customRequestCollection = client.db("wegrow").collection("customRequest")
 
-    // users related api
+    // users related APIs
     app.get("/users", async (req, res) => {
       const users = await userCollection.find().toArray();
       const teamMemberCount = users.length;
       res.json({ users, teamMemberCount });
     });
 
-    //delete an user
     app.delete("/users/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
@@ -51,44 +47,118 @@ async function run() {
       res.send(result);
     });
 
-
-    
-    //post to userCollection
     app.post("/users", async (req, res) => {
       const user = req.body;
-      // insert user if email doesn't exist
       const query = { email: user.email };
       const existingUser = await userCollection.findOne(query);
       if (existingUser) {
-        return res.send({ message: "user already exist", insertedId: null });
+        return res.send({ message: "User already exists", insertedId: null });
       }
       const result = await userCollection.insertOne(user);
       res.send(result);
     });
 
-    //creating product collection
     app.post("/products", async (req, res) => {
-      const item = req.body;
-      const result = await productCollection.insertOne(item);
-      res.send(result);
+      try {
+        const { assetName, price, type, availability, imageUrl, userEmail, addedAt, quantity } = req.body;
+
+        // Insert the product into the product collection
+        const result = await productCollection.insertOne({
+          assetName,
+          price,
+          type,
+          quantity,
+          availability,
+          imageUrl,
+          userEmail,
+          addedAt
+        });
+
+        res.json({
+          message: "Product added successfully",
+          insertedId: result.insertedId,
+        });
+      } catch (error) {
+        console.error("Error adding product:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+      }
+    });
+
+    //get all products 
+    app.get("/products", async (req, res) => {
+      const products = await productCollection.find().toArray();
+      res.json(products);
+    });
+    app.get("/products/:id", async (req, res) => {
+     const id = req.params.id;
+     const query = { _id: new ObjectId(id)}
+     const result = await productCollection.findOne(query);
+     res.send(result);
     });
 
 
 
+    //delete a product 
+    app.delete("/products/:id", async (req, res) => {
+      const productId = req.params.id;
+
+      try {
+        const query = { _id: new ObjectId(productId) };
+        const result = await productCollection.deleteOne(query);
+
+        if (result.deletedCount === 1) {
+          res.json({ message: "Product deleted successfully" });
+        } else {
+          res.status(404).json({ message: "Product not found" });
+        }
+      } catch (error) {
+        console.error("Error deleting product:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+      }
+    });
+
+       // PUT route for updating a product
+       app.put("/products/:id", async (req, res) => {
+        const productId = req.params.id;
+        const updatedProduct = req.body;
+  
+        try {
+          const query = { _id: new ObjectId(productId) };
+          const result = await productCollection.updateOne(query, {
+            $set: updatedProduct,
+          });
+  
+          if (result.matchedCount === 1) {
+            res.json({ message: "Product updated successfully" });
+          } else {
+            res.status(404).json({ message: "Product not found" });
+          }
+        } catch (error) {
+          console.error("Error updating product:", error);
+          res.status(500).json({ message: "Internal Server Error" });
+        }
+      });
+
+    //make a custom request 
+    app.post('/custom-request', async (req, res) =>{
+      const newCustomRequest = req.body;
+      console.log(newCustomRequest);
+      const result = await customRequestCollection.insertOne(newCustomRequest);
+      res.send(result);
+    })
 
 
 
-
-    // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
   } finally {
-    // Ensures that the client will close when you finish/error
+    // Ensure the client will close when you finish/error
     // await client.close();
   }
 }
+
 run().catch(console.dir);
 
 app.get("/", (req, res) => {
