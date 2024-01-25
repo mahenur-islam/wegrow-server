@@ -7,9 +7,18 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 // Middleware
+const allowedOrigins = ['https://wegrow-client.vercel.app', 'https://wegrow-auth-client.web.app'];
+
 app.use(
   cors({
-    origin: "http://localhost:5173", // Replace with frontend URL
+    origin: function (origin, callback) {
+      // Check if the request origin is in the allowedOrigins array
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
   })
 );
@@ -27,7 +36,7 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    await client.connect();
+    // await client.connect();
 
     const userCollection = client.db("wegrow").collection("users");
     const productCollection = client.db("wegrow").collection("products");
@@ -171,10 +180,10 @@ async function run() {
     });
 
 
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
   } finally {
     // Ensure the client will close when you finish/error
     // await client.close();
